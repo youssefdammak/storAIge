@@ -1,11 +1,24 @@
 package models
 
-import "time"
+import (
+	"log"
+	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
 
 type User struct {
-	ID        uint `gorm:"primaryKey"`
-	Name      string
-	Email     string `gorm:"unique"`
-	Password  string
-	CreatedAt time.Time
+	ID        uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4();primaryKey" json:"id"`
+	Name      string    `json:"name"`
+	Email     string    `gorm:"unique" json:"email"`
+	Password  string    `json:"-"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// BeforeCreate hook to generate UUID automatically
+func (u *User) BeforeCreate(tx *gorm.DB) (err error) {
+	u.ID = uuid.New()
+	log.Println("Generated UUID for new user:", u.ID)
+	return
 }

@@ -3,16 +3,51 @@ package controllers
 import (
 	"backend/src/config"
 	"backend/src/models"
+	"context"
+	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"time"
 
+	awscfg "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
 )
 
-var JWT_SECRET = []byte(os.Getenv("JWT_SECRET"))
+var (
+	JWT_SECRET []byte
+	S3_BUCKET  string
+	s3Client   *s3.Client
+)
+
+func init() {
+	// Load environment variables from .env
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Printf("Warning: .env not found or could not be loaded: %v", err)
+	}
+
+	S3_BUCKET = os.Getenv("S3_BUCKET_NAME")
+
+	cfg, err := awscfg.LoadDefaultConfig(context.TODO(),
+		awscfg.WithRegion(os.Getenv("AWS_REGION")),
+		awscfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
+			os.Getenv("AWS_ACCESS_KEY_ID"),
+			os.Getenv("AWS_SECRET_ACCESS_KEY"),
+			"",
+		)),
+	)
+	if err != nil {
+		log.Fatalf("Unable to load AWS config: %v", err)
+	}
+
+	s3Client = s3.NewFromConfig(cfg)
+}
 
 type RegisterInput struct {
 	Name     string `json:"name" binding:"required"`
@@ -32,7 +67,7 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	// Check if user exists
+	// Check if user already exists
 	var existing models.User
 	if err := config.DB.Where("email = ?", input.Email).First(&existing).Error; err == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Email already in use"})
@@ -46,20 +81,34 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	// Create user
+	// Create new user
 	user := models.User{
 		Name:     input.Name,
 		Email:    input.Email,
 		Password: string(hashedPassword),
 	}
+
+	// Save user to DB (so that the ID is generated)
 	if err := config.DB.Create(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create user"})
 		return
 	}
 
-	// Respond
+	// Create user folder in S3 using the DB ID
+	folderKey := fmt.Sprintf("%s/", user.ID.String())
+
+	_, err = s3Client.PutObject(context.TODO(), &s3.PutObjectInput{
+		Bucket: &S3_BUCKET,
+		Key:    &folderKey,
+	})
+	if err != nil {
+		log.Printf("⚠️ Failed to create S3 folder for user %d: %v", user.ID, err)
+	} else {
+		log.Printf("✅ Created S3 folder for user ID: %d", user.ID)
+	}
+
 	c.JSON(http.StatusCreated, gin.H{
-		"message": "User created",
+		"message": "User created successfully",
 		"user": gin.H{
 			"id":        user.ID,
 			"name":      user.Name,
@@ -83,13 +132,13 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// Compare password
+	// Compare passwords
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password)); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid email or password"})
 		return
 	}
 
-	// Generate JWT token
+	// Create JWT token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"id":  user.ID,
 		"exp": time.Now().Add(24 * time.Hour).Unix(),
@@ -100,7 +149,6 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// Return response
 	c.JSON(http.StatusOK, gin.H{
 		"token": tokenString,
 		"user": gin.H{

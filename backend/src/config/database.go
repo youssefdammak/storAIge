@@ -1,6 +1,7 @@
 package config
 
 import (
+	"backend/src/models"
 	"fmt"
 	"log"
 	"os"
@@ -13,9 +14,8 @@ import (
 var DB *gorm.DB
 
 func ConnectDB() {
-	// Load environment variables
-	err := godotenv.Load()
-	if err != nil {
+	// Load .env file if it exists
+	if err := godotenv.Load(); err != nil {
 		log.Println("⚠️  Warning: .env file not found, reading system env vars instead")
 	}
 
@@ -24,12 +24,17 @@ func ConnectDB() {
 		log.Fatal("❌ DATABASE_URL not set in .env")
 	}
 
-	// Connect to DB
+	// Connect to PostgreSQL
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatal("❌ Failed to connect to database:", err)
 	}
 
-	fmt.Println("✅ Database connected successfully!")
+	// ✅ Run migrations (includes new UUID field)
+	if err := db.AutoMigrate(&models.User{}); err != nil {
+		log.Fatalf("❌ Migration failed: %v", err)
+	}
+
 	DB = db
+	fmt.Println("✅ Database connected and migrated successfully!")
 }
