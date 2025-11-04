@@ -23,6 +23,9 @@ func main() {
 
     // Define the bucket and object key
     bucket := os.Getenv("AWS_S3_BUCKET")
+    if bucket == "" {
+        log.Fatal("❌ AWS_S3_BUCKET environment variable is not set; unable to determine target bucket")
+    }
     objectKey := "test-file.txt"
 
     // Create the content to upload
