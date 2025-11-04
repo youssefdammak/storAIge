@@ -1,24 +1,27 @@
 package models
 
 import (
-	"log"
-	"time"
-
-	"github.com/google/uuid"
+	gonanoid "github.com/matoous/go-nanoid/v2"
 	"gorm.io/gorm"
+	"time"
 )
 
 type User struct {
-	ID        uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
+	ID        string    `gorm:"type:char(10);primaryKey" json:"id"`
 	Name      string    `json:"name"`
 	Email     string    `gorm:"unique" json:"email"`
 	Password  string    `json:"-"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
-// BeforeCreate hook to generate UUID automatically
+// BeforeCreate: generate a 10-character Nano ID
 func (u *User) BeforeCreate(tx *gorm.DB) (err error) {
-	u.ID = uuid.New()
-	log.Println("Generated UUID for new user:", u.ID)
-	return
+	if u.ID == "" {
+		id, err := gonanoid.New(10) // length = 10
+		if err != nil {
+			return err
+		}
+		u.ID = id
+	}
+	return nil
 }

@@ -12,6 +12,8 @@ require (
 	gorm.io/gorm v1.31.0
 )
 
+require github.com/matoous/go-nanoid/v2 v2.1.0 // indirect
+
 require (
 	github.com/aws/aws-sdk-go-v2 v1.39.5 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.2 // indirect

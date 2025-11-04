@@ -94,17 +94,17 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	// Create user folder in S3 using the DB ID
-	folderKey := fmt.Sprintf("%s/", user.ID.String())
+	// Create user folder in S3 using the DB ID (string)
+	folderKey := fmt.Sprintf("%s/", user.ID)
 
 	_, err = s3Client.PutObject(context.TODO(), &s3.PutObjectInput{
 		Bucket: &S3_BUCKET,
 		Key:    &folderKey,
 	})
 	if err != nil {
-		log.Printf("⚠️ Failed to create S3 folder for user %d: %v", user.ID, err)
+		log.Printf("⚠️ Failed to create S3 folder for user %s: %v", user.ID, err)
 	} else {
-		log.Printf("✅ Created S3 folder for user ID: %d", user.ID)
+		log.Printf("✅ Created S3 folder for user ID: %s", user.ID)
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
