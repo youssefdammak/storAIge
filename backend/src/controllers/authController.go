@@ -7,47 +7,18 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
-	awscfg "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
 )
 
 var (
 	JWT_SECRET []byte
-	S3_BUCKET  string
-	s3Client   *s3.Client
 )
 
-func init() {
-	// Load environment variables from .env
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Printf("Warning: .env not found or could not be loaded: %v", err)
-	}
-
-	S3_BUCKET = os.Getenv("S3_BUCKET_NAME")
-
-	cfg, err := awscfg.LoadDefaultConfig(context.TODO(),
-		awscfg.WithRegion(os.Getenv("AWS_REGION")),
-		awscfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
-			os.Getenv("AWS_ACCESS_KEY_ID"),
-			os.Getenv("AWS_SECRET_ACCESS_KEY"),
-			"",
-		)),
-	)
-	if err != nil {
-		log.Fatalf("Unable to load AWS config: %v", err)
-	}
-
-	s3Client = s3.NewFromConfig(cfg)
-}
 
 type RegisterInput struct {
 	Name     string `json:"name" binding:"required"`
@@ -97,8 +68,8 @@ func Register(c *gin.Context) {
 	// Create user folder in S3 using the DB ID (string)
 	folderKey := fmt.Sprintf("%s/", user.ID)
 
-	_, err = s3Client.PutObject(context.TODO(), &s3.PutObjectInput{
-		Bucket: &S3_BUCKET,
+	_, err = config.S3Client.PutObject(context.TODO(), &s3.PutObjectInput{
+		Bucket: &config.S3Bucket,
 		Key:    &folderKey,
 	})
 	if err != nil {
