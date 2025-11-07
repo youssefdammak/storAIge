@@ -28,6 +28,7 @@ func main() {
 
 	// Your routes
 	routes.AuthRoutes(r)
+	routes.UploadRoutes(r)
 
 	r.Run(":8080") // start server
 }
