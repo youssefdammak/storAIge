@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"log"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -13,7 +14,7 @@ var JWT_SECRET = []byte(os.Getenv("JWT_SECRET"))
 
 // Claims now only contains the user ID and standard JWT fields
 type Claims struct {
-	ID uint `json:"id"`
+	ID string `json:"id"`
 	jwt.RegisteredClaims
 }
 
@@ -28,10 +29,13 @@ func Protect() gin.HandlerFunc {
 		}
 
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		
 
+		log.Println("Token String:", tokenString) // Debugging line
 		token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 			return JWT_SECRET, nil
 		})
+		log.Println("Parsed Token:", token) // Debugging line
 
 		if err != nil || !token.Valid {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
@@ -43,7 +47,7 @@ func Protect() gin.HandlerFunc {
 		if claims, ok := token.Claims.(*Claims); ok {
 			c.Set("user", claims)
 		} else {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token 2"})
 			c.Abort()
 			return
 		}
