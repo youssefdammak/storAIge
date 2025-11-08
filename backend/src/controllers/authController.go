@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"time"
+	"os"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/gin-gonic/gin"
@@ -15,9 +16,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var (
-	JWT_SECRET []byte
-)
+var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 
 
 type RegisterInput struct {
@@ -114,7 +113,7 @@ func Login(c *gin.Context) {
 		"id":  user.ID,
 		"exp": time.Now().Add(24 * time.Hour).Unix(),
 	})
-	tokenString, err := token.SignedString(JWT_SECRET)
+	tokenString, err := token.SignedString(jwtSecret)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
