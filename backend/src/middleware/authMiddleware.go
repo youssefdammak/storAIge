@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"log"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -29,13 +28,10 @@ func Protect() gin.HandlerFunc {
 		}
 
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		
 
-		log.Println("Token String:", tokenString) // Debugging line
 		token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 			return JWT_SECRET, nil
 		})
-		log.Println("Parsed Token:", token) // Debugging line
 
 		if err != nil || !token.Valid {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
